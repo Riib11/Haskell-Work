@@ -1,0 +1,1 @@
+isGang :: Int -> Bool

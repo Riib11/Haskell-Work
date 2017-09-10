@@ -1,0 +1,1 @@
+data Car = Car name
