@@ -1,5 +1,7 @@
+module Ledger where
+
 --------------------
----- types
+---- Ledger
 --------------------
 
 data Ledger = Node Statement Ledger | EmptyNode deriving(Show)
@@ -22,22 +24,9 @@ addStatement :: Statement -> Ledger -> Ledger
 addStatement stm led = Node stm led
 
 transact :: Address -> Address -> Amount -> Ledger -> Ledger
-transact add1 add2 amt led =
-    addStatement (Statement add2 ((getAmount add2 led) + amt)) $ addStatement (Statement add1 ((getAmount add1 led) - amt)) led
-
-negative :: Int -> Int
-negative a = 0 - a
-
---------------------
----- example
---------------------
-
-add1 = "00000000" :: Address
-amt1 = 10 :: Amount
-stm1 = Statement add1 amt1
-
-add2 = "11111111" :: Address
-amt2 = 0 :: Amount
-stm2 = Statement add2 amt2
-
-ledger = addStatement stm1 $ addStatement stm2 EmptyNode
+transact addFrom addTo amt led =
+        addStatement newTo $ addStatement newFrom led
+        where newTo   = Statement addTo   (amtTo - amt)     -- new statement for receiver
+              newFrom = Statement addFrom (amtFrom   + amt) -- new statement for sender
+              amtTo   = getAmount addTo   led               -- new amount for reciever
+              amtFrom = getAmount addFrom led               -- new amount for sender
