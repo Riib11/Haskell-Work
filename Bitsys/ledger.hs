@@ -5,14 +5,14 @@ module Ledger where
 --------------------
 
 data Ledger = Node Statement Ledger | EmptyNode deriving(Show)
-data Statement = Statement Address Amount deriving(Show)
 
+data Statement = Statement Address Amount deriving(Show)
 type Address = String
 type Amount = Int
 
---------------------
----- functions
---------------------
+-----------------------
+---- implimentations
+-----------------------
 
 getAmount :: Address -> Ledger -> Amount
 getAmount add (Node (Statement address amount) led)

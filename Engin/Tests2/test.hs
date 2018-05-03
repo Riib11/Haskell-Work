@@ -1,0 +1,1 @@
+data Props = Props Int | Props Bool
