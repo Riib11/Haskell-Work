@@ -1,43 +1,102 @@
 module State
-( State(message), start_state
+( State(notes, running), state_start, show_notes
 , Command, string_to_command
 , update
 ) where
+
+import UtilString
+import UtilList
 
 -- +=========================
 -- | State
 -- +=========================
 data State = State
-    { agents   :: [Agent]
+    { world    :: World
+    , agents   :: [Agent]
     , objects  :: [Object]
     , time     :: Time
     , running  :: Bool
-    , message  :: String
+    , notes    :: [StateNote]
     } deriving (Show)
-
-start_state :: State
-start_state = State [] [] 0 True
-    "this is the start state and this is the start state message. Its a little long because I wanted to see how it would handle long messages in the textbok sort of thing."
 
 type Entity = Either Object Agent
 type Time = Int
 
+state_start :: State
+state_start = State
+    world_start     -- world
+    agents_start    -- agents
+    objects_start   -- objects
+    0               -- time
+    True            -- running
+    notes_start     -- notes
+
+-- State: setters
+
 type StateSetter a = State -> a -> State
 
+set_world :: StateSetter World
+set_world (State _ as os t r ns) w = State w as os t r ns
+
 set_agents :: StateSetter [Agent]
-set_agents (State _ os t r m) as = State as os t r m
+set_agents (State w _ os t r ns) as = State w as os t r ns
 
 set_objects :: StateSetter [Object]
-set_objects (State as _ t r m) os = State as os t r m
+set_objects (State w as _ t r ns) os = State w as os t r ns
 
 set_time :: StateSetter Time
-set_time (State as os _ r m) t = State as os t r m
+set_time (State w as os _ r ns) t = State w as os t r ns
 
 set_running :: StateSetter Bool
-set_running (State as os t _ m) r = State as os t r m
+set_running (State w as os t _ ns) r = State w as os t r ns
 
-set_message :: StateSetter String
-set_message (State as os t r _) m = State as os t r m
+set_notes :: StateSetter [StateNote]
+set_notes (State w as os t r _) ns = State w as os t r ns
+
+-- State: modifiers
+
+add_note :: State -> StateNote -> State
+add_note state n = set_notes state $ (notes state) ++ [n]
+
+-- +=========================
+-- | World
+-- +=========================
+data World = World
+    { bounds :: (Int,Int,Int)
+    } deriving (Show)
+
+world_start = World (10, 10, 10)
+
+-- +=========================
+-- | StateNote
+-- +=========================
+data StateNote
+    = StateNoteError String
+    | StateNoteClear
+    | StateNoteMessage String
+    | StateNoteString String
+    -- | StateNoteTable [String] [[String]]
+
+instance Show StateNote where
+    show sn = case sn of
+        StateNoteError s -> "[!!] " ++ s
+        StateNoteClear -> ""
+        StateNoteMessage s -> s
+        StateNoteString s -> s
+        -- | StateNoteTable hs xss ->
+
+notes_start = [StateNoteMessage "this is the start state and this is the start state message. Its a little long because I wanted to see how it would handle long messages in the textbok sort of thing."]
+
+show_notes :: State -> String
+show_notes state = foldr
+    (\a b -> (show a) ++ "\n" ++ b) "" (notes state)
+
+-- show_notes :: State -> String
+-- show_notes s = helper $ notes s
+--     where
+--         helper :: [StateNote] -> String
+--         helper [] = ""
+--         helper (s:ss) = (show s) ++ "\n" ++ (helper ss)
 
 -- +=========================
 -- | Unique Identifier (UId)
@@ -53,6 +112,8 @@ data Object = Object
 instance Show Object where
     show object = show $ "Object<"++(object_uid object)++">"
 
+objects_start = []
+
 -- +=========================
 -- | Agent
 -- +=========================
@@ -63,20 +124,42 @@ data Agent = Agent
 instance Show Agent where
     show agent = show $ "Agent<"++(agent_uid agent)++">"
 
+agents_start = []
+
 -- +=========================
 -- | Command (from User)
 -- +=========================
 
 -- TODO
-data Command = Command { raw :: String }
+data Command
+    = Echo String
+    | Quit
+    | Clear
+    | Unrecognized String
 
 -- TODO
 string_to_command :: String -> Command
-string_to_command str = Command str
+string_to_command [] = Unrecognized "<empty>"
+string_to_command str
+    | cmd == "echo" = Echo
+        (foldr (\a b-> a ++ " " ++ b) "" args)
+    | cmd == "clear" = Clear
+    | cmd == "quit" = Quit
+    | otherwise = Unrecognized cmd
+    where
+        raw = UtilString.split ' ' str
+        (cmd, args) = case UtilList.pop raw of
+            Nothing -> ("", [])
+            Just (c,as) -> (c, as)
 
 -- TODO
 apply_command :: State -> Command -> State
-apply_command state command = set_message state (raw command)
+apply_command state command =
+    case command of
+        Echo note -> add_note state (StateNoteMessage note)
+        Quit -> set_running state False
+        Clear -> set_notes state []
+        Unrecognized cmd -> add_note state (StateNoteError $ "unrecognized command: " ++ cmd)
 
 -- +=========================
 -- | Updating
