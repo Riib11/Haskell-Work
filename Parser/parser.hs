@@ -23,8 +23,8 @@ parse input = head . fst $ helper (Program []) input
                 -- begin program
                 Program cs ->
                     --
-                    -- start new Container?
-                    case extract_next_container input of
+                    -- begin new Container?
+                    case extract_next_container_begin input of
                         -- extract next Container
                         Just (node_next_empty, input_next) ->
                             let (nodes_next, input_rest) = helper node_next_empty input_next
@@ -49,18 +49,18 @@ parse input = head . fst $ helper (Program []) input
                 --
                 ----------------------------------------------------------------
                 -- in a container
-                Container (start, end) cs ->
+                Container (begin, end) cs ->
                     --
                     -- at end of current container?
-                    -- if input `starts_with` end
+                    -- if input `begins_with` end
                     case at_container_end node input of
                         Just input_rest -> ([node], input_rest)
                         --
                         -- new contents of current container
                         Nothing ->
                             --
-                            -- next is start of new Container?
-                            case extract_next_container input of
+                            -- next is begin of new Container?
+                            case extract_next_container_begin input of
                                 -- extract next container
                                 Just (node_next_empty, input_next) ->
                                     let (nodes_next, input_rest) = helper node_next_empty input_next
@@ -110,8 +110,8 @@ data Node
 instance Show Node where
     show node = case node of
         Program cs       -> "\n" `join` (map show cs)
-        Container (start, end) cs ->
-            start ++ ("," `join` (map show cs)) ++ end
+        Container (begin, end) cs ->
+            begin ++ ("" `join` (map show cs)) ++ end
         Special string   -> string
         Literal string   -> case string of
             "\n" -> ""
@@ -126,30 +126,34 @@ set_children node ns = case node of
 -- +============================================
 -- | Containers
 -- |
--- + have a start and end
+-- + have a begin and end
 -- |
 
 containers :: [Node]
 containers = map container_empty
     [( "(", ")" )]
 
-extract_next_container :: String -> Maybe (Node, String)
-extract_next_container = extract_next_from_selection
-    containers at_container_start
+extract_next_container_begin :: String -> Maybe (Node, String)
+extract_next_container_begin = extract_next_from_selection
+    containers at_container_begin
+
+extract_next_container_end :: String -> Maybe (Node, String)
+extract_next_container_end = extract_next_from_selection
+    containers at_container_end
 
 at_container_end :: Node -> String -> Maybe String
 at_container_end node str = case node of
-    Container (start, end) _ ->
-        if str `starts_with` end
+    Container (begin, end) _ ->
+        if str `begins_with` end
             then Just $ drop (length end) str
             else Nothing
     _ -> Nothing
 
-at_container_start :: Node -> String -> Maybe String
-at_container_start node str = case node of
-    Container (start, end) _ ->
-        if str `starts_with` start
-            then Just $ drop (length start) str
+at_container_begin :: Node -> String -> Maybe String
+at_container_begin node str = case node of
+    Container (begin, end) _ ->
+        if str `begins_with` begin
+            then Just $ drop (length begin) str
             else Nothing
     _ -> Nothing
 
@@ -175,7 +179,7 @@ extract_next_special = extract_next_from_selection
 at_special :: Node -> String -> Maybe String
 at_special node str = case node of
     Special string ->
-        if str `starts_with` string
+        if str `begins_with` string
             then Just $ drop (length string) str
             else Nothing
     _ -> Nothing
@@ -186,11 +190,15 @@ at_special node str = case node of
 
 extract_next_literal :: String -> Maybe (Node, String)
 extract_next_literal ""  = Nothing
-extract_next_literal str = Just $ helper str ""
+extract_next_literal str = Just $ helper "" str
     where
         helper :: String -> String -> (Node, String)
         helper output input = case input of
             ""    -> (Literal output, input)
-            (c:s) -> case extract_next_special (c:s) of
-                Just _  -> (Literal output, input)
-                Nothing -> helper (output ++ [c]) s
+            (c:s) -> if (any
+                (\f -> case f input of Nothing -> False; _ -> True)
+                [ extract_next_special
+                , extract_next_container_begin
+                , extract_next_container_end ])
+                then (Literal output, input)
+                else helper (output ++ [c]) s

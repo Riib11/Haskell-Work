@@ -1,16 +1,16 @@
 module UtilString
-( starts_with
+( begins_with
 , extract_next_from_selection
 , join
 ) where
 
--- s1 starts with s2
-starts_with :: String -> String -> Bool
-starts_with "" s2 = "" == s2
-starts_with s1 "" = True
-starts_with (c1:s1) (c2:s2) =
+-- s1 begins with s2
+begins_with :: String -> String -> Bool
+begins_with "" s2 = "" == s2
+begins_with s1 "" = True
+begins_with (c1:s1) (c2:s2) =
     if c1 == c2
-        then starts_with s1 s2
+        then begins_with s1 s2
         else False
 
 extract_next_from_selection :: [t] -> (t -> String -> Maybe String) -> String -> Maybe (t, String)
