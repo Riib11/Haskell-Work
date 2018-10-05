@@ -1,5 +1,7 @@
 module UtilString
 ( split
+, textbox
+, repeat
 ) where
 
 split :: Char -> String -> [String]
@@ -23,3 +25,24 @@ index (x:xs) i
     | i < 0     = Nothing
     | i == 0    = Just x
     | otherwise = index xs (i-1)
+
+textbox_width = 50::Int
+textbox_buffer = " ║ "
+
+textbox :: String -> String
+textbox string =
+    (  "\n─╫──────────────────────────────────────────────────────────╖\n"
+    ++ textbox_buffer ++ helper string 0
+    ++ "\n ╙──────────────────────────────────────────────────────────╜\n")
+    where
+        helper :: String -> Int -> String
+        helper s i = case s of
+            [] -> ""
+            (c:cs) -> if i > textbox_width
+                then if c == ' '
+                    then c : "\n" ++ textbox_buffer ++ helper cs 0
+                    else c : helper cs (i+1)
+                else c : helper cs (i+1)
+
+repeat :: String -> Int -> String
+repeat s n = 

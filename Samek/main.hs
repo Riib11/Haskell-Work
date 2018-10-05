@@ -46,21 +46,3 @@ putInputHeader = do
     putStrColored Green "◀ "
     putStrColored Cyan " input "
     putStrColored Green "▶  "
-
-textbox_width = 50::Int
-textbox_buffer = " ║ "
-
-textbox :: String -> String
-textbox string =
-    (  "\n─╫──────────────────────────────────────────────────────────╖\n"
-    ++ textbox_buffer ++ helper string 0
-    ++ "\n ╙──────────────────────────────────────────────────────────╜\n")
-    where
-        helper :: String -> Int -> String
-        helper s i = case s of
-            [] -> ""
-            (c:cs) -> if i > textbox_width
-                then if c == ' '
-                    then c : "\n" ++ textbox_buffer ++ helper cs 0
-                    else c : helper cs (i+1)
-                else c : helper cs (i+1)

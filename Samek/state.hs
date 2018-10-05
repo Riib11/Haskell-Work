@@ -73,16 +73,16 @@ world_start = World (10, 10, 10)
 data StateNote
     = StateNoteError String
     | StateNoteClear
-    | StateNoteMessage String
-    | StateNoteString String
+    | StateNoteMessage String String
+    | StateNoteString String String
     -- | StateNoteTable [String] [[String]]
 
 instance Show StateNote where
     show sn = case sn of
-        StateNoteError s -> "[!!] " ++ s
-        StateNoteClear -> ""
-        StateNoteMessage s -> s
-        StateNoteString s -> s
+        StateNoteError s     -> "[!!] " ++ s
+        StateNoteClear       -> ""
+        StateNoteMessage t s -> s
+        StateNoteString  t s -> s
         -- | StateNoteTable hs xss ->
 
 notes_start = [StateNoteMessage "this is the start state and this is the start state message. Its a little long because I wanted to see how it would handle long messages in the textbok sort of thing."]
@@ -156,10 +156,10 @@ string_to_command str
 apply_command :: State -> Command -> State
 apply_command state command =
     case command of
-        Echo note -> add_note state (StateNoteMessage note)
+        Echo note -> add_note state (StateNoteMessage "Echo" note)
         Quit -> set_running state False
         Clear -> set_notes state []
-        Unrecognized cmd -> add_note state (StateNoteError $ "unrecognized command: " ++ cmd)
+        Unrecognized cmd -> add_note state (StateNoteError "[Error]" $ "unrecognized command: " ++ cmd)
 
 -- +=========================
 -- | Updating
