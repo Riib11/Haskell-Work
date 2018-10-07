@@ -17,12 +17,9 @@ parse input = head . fst $ helper (Program []) input
                 concat_to_children :: [Node] -> Node
                 concat_to_children ns = set_children node
                     $ (children node) ++ ns
-            in case node of
-                --
-                ----------------------------------------------------------------
-                -- begin program
-                Program cs ->
-                    --
+
+                extract_next_node :: () -> ([Node], String)
+                extract_next_node () =  --
                     -- begin new Container?
                     case extract_next_container_begin input of
                         -- extract next Container
@@ -30,62 +27,48 @@ parse input = head . fst $ helper (Program []) input
                             let (nodes_next, input_rest) = helper node_next_empty input_next
                             in helper (concat_to_children nodes_next) input_rest
                         --
-                        -- extract next Special?
-                        Nothing ->
-                            case extract_next_special input of
-                                -- extract next Special
-                                Just (node_next, input_next) ->
-                                    helper (concat_to_children [node_next]) input_next
-                                --
-                                -- next is Literal?
-                                Nothing ->
-                                    case extract_next_literal input of
-                                        -- extract next Literal
-                                        Just (node_next, input_rest) ->
-                                            helper (Program $ cs ++ [node_next]) input_rest
-                                        --
-                                        -- end of input
-                                        Nothing -> ([node], "")
+                        -- next is Seperator
+                        Nothing -> case extract_next_seperator input of
+                            -- extract next Seperator
+                            Just (node_next, input_next) ->
+                                helper (concat_to_children [node_next]) input_next
+                            --
+                            -- next is Special?
+                            Nothing ->
+                                case extract_next_special input of
+                                    -- extract next Special
+                                    Just (node_next, input_next) ->
+                                        helper (concat_to_children [node_next]) input_next
+                                    --
+                                    -- next is Literal?
+                                    Nothing ->
+                                        case extract_next_literal input of
+                                            -- extract next Literal
+                                            Just (node_next, input_rest) ->
+                                                helper (concat_to_children [node_next]) input_rest
+                                            --
+                                            -- end of input
+                                            Nothing -> ([node], "")
+
+            in case node of
+                --
+                ----------------------------------------------------------------
+                -- begin program
+                Program _ -> extract_next_node ()
                 --
                 ----------------------------------------------------------------
                 -- in a container
                 Container (begin, end) cs ->
-                    --
-                    -- at end of current container?
-                    -- if input `begins_with` end
                     case at_container_end node input of
+                        -- at end of current container?
                         Just input_rest -> ([node], input_rest)
-                        --
-                        -- new contents of current container
-                        Nothing ->
-                            --
-                            -- next is begin of new Container?
-                            case extract_next_container_begin input of
-                                -- extract next container
-                                Just (node_next_empty, input_next) ->
-                                    let (nodes_next, input_rest) = helper node_next_empty input_next
-                                    in helper (concat_to_children nodes_next) input_rest
-                                --
-                                -- next is Special?
-                                Nothing ->
-                                    case extract_next_special input of
-                                        -- extract next Special
-                                        Just (node_next, input_rest) ->
-                                            helper (concat_to_children [node_next]) input_rest
-                                        --
-                                        -- next is Literal?
-                                        Nothing ->
-                                            case extract_next_literal input of
-                                                -- extract next Literal
-                                                Just (node_next, input_rest) ->
-                                                    helper (concat_to_children [node_next]) input_rest
-                                                --
-                                                -- end of input
-                                                Nothing -> ([node], "")
+                        Nothing -> extract_next_node ()
                 --
                 ----------------------------------------------------------------
-                -- just a literal
-                Literal string -> ([node], input)
+                -- leafs
+                Seperator _ -> ([node], input)
+                Special   _ -> ([node], input)
+                Literal   _ -> ([node], input)
 
 
 -- +============================================
@@ -100,6 +83,8 @@ data Node
     | Container
         { brackets  :: (String, String)
         , children  :: [Node] }
+    | Seperator
+        { string    :: String }
     --
     | Special
         { string    :: String }
@@ -111,17 +96,24 @@ instance Show Node where
     show node = case node of
         Program cs       -> "\n" `join` (map show cs)
         Container (begin, end) cs ->
-            begin ++ ("" `join` (map show cs)) ++ end
+            let cs_filtered = filter (\x -> case x of Seperator _ -> False; _ -> True) cs
+            in begin ++ (" " `join` (map show cs_filtered)) ++ end
+        Seperator string -> ""
         Special string   -> string
-        Literal string   -> case string of
-            "\n" -> ""
-            _ -> string
+        Literal string   -> "" ++ string ++ ""
 
 set_children :: Node -> [Node] -> Node
 set_children node ns = case node of
     Program      _ -> Program ns
     Container bs _ -> Container bs ns
     _              -> node
+
+represention_of :: Node -> String
+represention_of node = case node of
+    Program _ -> "Program"
+    Container (b,e) _ -> b ++ " ... " ++ e
+    Seperator _ -> "_"
+    Special _ -> 
 
 -- +============================================
 -- | Containers
@@ -161,6 +153,31 @@ container_empty :: (String, String) -> Node
 container_empty bs = Container bs []
 
 -- +============================================
+-- | Seperators
+-- |
+
+seperators :: [Node]
+seperators = map Seperator
+    [ " ", "\n" ]
+
+extract_next_seperator :: String -> Maybe (Node, String)
+extract_next_seperator = extract_next_from_selection
+    seperators at_seperator
+
+at_seperator :: Node -> String -> Maybe String
+at_seperator node = at_next node
+    (\n -> case n of
+        Seperator string -> Just string
+        _ -> Nothing)
+
+-- at_seperator node str = case node of
+--     Seperator string ->
+--         if str `begins_with` string
+--             then Just $ drop (length string) str
+--             else Nothing
+--     _ -> Nothing
+
+-- +============================================
 -- | Specials
 -- |
 -- + seperate left from right
@@ -170,7 +187,7 @@ container_empty bs = Container bs []
 
 specials :: [Node]
 specials = map Special
-    [ " ", "\n" ]
+    []
 
 extract_next_special :: String -> Maybe (Node, String)
 extract_next_special = extract_next_from_selection
@@ -197,8 +214,9 @@ extract_next_literal str = Just $ helper "" str
             ""    -> (Literal output, input)
             (c:s) -> if (any
                 (\f -> case f input of Nothing -> False; _ -> True)
-                [ extract_next_special
-                , extract_next_container_begin
-                , extract_next_container_end ])
+                [ extract_next_container_begin
+                , extract_next_container_end 
+                , extract_next_seperator
+                , extract_next_special ])
                 then (Literal output, input)
                 else helper (output ++ [c]) s

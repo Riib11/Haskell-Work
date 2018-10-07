@@ -1,6 +1,7 @@
 module UtilString
 ( begins_with
 , extract_next_from_selection
+, at_next
 , join
 ) where
 
@@ -22,6 +23,13 @@ extract_next_from_selection selection matches string =
             (x:xs) -> case x `matches` string of
                 Just s  -> Just (x, s)
                 Nothing -> helper xs
+
+at_next :: t -> (t -> Maybe String) -> String -> Maybe String
+at_next x represent string = case represent x of
+    Nothing     -> Nothing
+    Just str -> if string `begins_with` str
+        then Just $ drop (length str) string
+        else Nothing
 
 join :: String -> [String] -> String
 join conjunction ss = case ss of
