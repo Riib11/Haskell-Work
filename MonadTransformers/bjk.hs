@@ -1,3 +1,6 @@
+-- file: bjk.hs
+-- author: Jim Fix (Reed College), 2019
+
 import System.Random
 import Control.Monad
 

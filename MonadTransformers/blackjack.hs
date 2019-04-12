@@ -15,11 +15,9 @@ import Data.Char (toLower)
 
 data Card = Card { suite :: Suite, rank :: Rank }
 
-instance Show Card where
-  show c = show (suite c) ++ ":" ++ show (rank c)
+instance Show Card where show c = show (suite c) ++ ":" ++ show (rank c)
 
-data Suite
-  = S_Spades | S_Clubs | S_Diamonds | S_Hearts
+data Suite = S_Spades | S_Clubs | S_Diamonds | S_Hearts
   deriving (Eq, Enum)
 
 instance Show Suite where
@@ -28,8 +26,7 @@ instance Show Suite where
   show S_Diamonds = "D"
   show S_Hearts   = "H"
 
-data Rank
-  = R_Ace | R_2 | R_3 | R_4 | R_5 | R_6 | R_7 | R_8 | R_9 | R_10 | R_Jack | R_Queen | R_King
+data Rank = R_Ace | R_2 | R_3 | R_4 | R_5 | R_6 | R_7 | R_8 | R_9 | R_10 | R_Jack | R_Queen | R_King
   deriving (Eq, Enum)
 
 instance Show Rank where
@@ -37,7 +34,14 @@ instance Show Rank where
   show R_Jack  = "J"
   show R_Queen = "Q"
   show R_King  = "K"
-  show rank    = (show . (+1) . fromEnum) rank
+  show rank    = show . (+1) . fromEnum $ rank
+
+get_rank_value :: Rank -> Int
+get_rank_value r = case r of
+  R_Jack  -> 10
+  R_Queen -> 10
+  R_King  -> 10
+  _       -> fromEnum r + 1
 
 --
 -- Card-stack
@@ -65,25 +69,21 @@ init_state = BJState [] [] []
 --  Score
 -----------------------------------------------------------------------------------------------------------------------------
 
-data Score = Score
-  { low_score :: Int, high_score :: Int }
+data Score = Score { low_score :: Int, high_score :: Int }
   deriving (Show)
 
-get_hand_score :: Card -> Score
-get_hand_score c = case rank c of
+get_card_score :: Card -> Score
+get_card_score c = case rank c of
   R_Ace   -> Score 1  11
-  R_Jack  -> Score 10 10
-  R_Queen -> Score 10 10
-  R_King  -> Score 10 10
-  rank    -> Score r  r  where r = 1 + fromEnum rank
+  r       -> Score v  v where v = get_rank_value r
 
 sum_scores :: [Score] -> Score
 sum_scores ss = Score (total low_score) (total high_score)
-  where total get_hand_score = sum $ map get_hand_score ss
+  where total get_card_score = sum $ map get_card_score ss
 
 get_hand_total :: Hand -> Int
 get_hand_total hand = if high_score score <= 21 then high_score score else low_score score
-  where score = sum_scores $ map get_hand_score hand
+  where score = sum_scores $ map get_card_score hand
 
 get_hand_totals :: BJState -> (Int, Int)
 get_hand_totals s = (p,d) where [p,d] = map (\t -> get_hand_total $ view t s) [player, dealer]
@@ -111,8 +111,7 @@ show_state :: Bool -> BJState -> String
 show_state is_midgame s =
   "player: " ++ (show_revealed_hand $ view player s) ++ "\n" ++
   "dealer: " ++ (if is_midgame then show_peeking_hand (view dealer s) else show_revealed_hand (view dealer s)) ++ "\n" ++
-  divider
-  where divider = (take 40 $ repeat '-')
+  (take 40 $ repeat '-')
 
 display_state :: Bool -> BJState -> IO ()
 display_state hidden s = putStrLn $ show_state hidden s
