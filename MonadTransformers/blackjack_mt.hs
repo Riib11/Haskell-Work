@@ -137,13 +137,18 @@ table_init = Table [] [] []
 
 display_table :: Bool -> String -> BJStateIO ()
 display_table hidden label = do
-  table <- get
-  
-  let dealer_scoring = if hidden then show (cards_value $ drop 1 $ view dealer table) ++ " < " else (show $ cards_value $ view dealer table) ++ " = "
-  
+  table <- get  
   lift . putStrLn $ (take 40 $ repeat '=') ++ " (" ++ label ++ ")"
+  -- player's score
   lift . putStrLn $ "PLAYER: " ++ (show $ cards_value $ view player table) ++ " = " ++ hand_show False (view player table)
-  lift . putStrLn $ "DEALER: " ++ dealer_scoring ++ hand_show hidden (view dealer table)
+  -- dealer's score
+  lift . putStr $ "DEALER: "
+  if hidden
+    then lift . putStr $ show (cards_value (drop 1 $ view dealer table)) ++ " < "
+    else lift . putStr $ show (cards_value $ view dealer table)          ++ " = "
+  lift . putStrLn $ hand_show hidden (view dealer table)
+
+  
 
 -----------------------------------------------------------------------------------------------------------------------------
 -- blackjack updates
