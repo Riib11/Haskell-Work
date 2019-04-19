@@ -49,7 +49,7 @@ rank_score rank = case rank of
   R_Jack  -> Score 10 10
   R_Queen -> Score 10 10
   R_King  -> Score 10 10
-  _       -> Score r  r  where r = fromEnum rank
+  _       -> Score r  r  where r = fromEnum rank + 1
 
 card_score :: Card -> Score
 card_score = rank_score . rank
@@ -135,12 +135,15 @@ table_init = Table [] [] []
 
 -- display
 
-display_table :: Bool -> Table -> IO ()
-display_table hidden table = do
-  putStrLn $ take 40 $ repeat '='
-  putStrLn $ "player: " ++ hand_show False  (view player table)
-  putStrLn $ "dealer: " ++ hand_show hidden (view dealer table)
-  putStrLn $ take 40 $ repeat '='
+display_table :: Bool -> String -> BJStateIO ()
+display_table hidden label = do
+  table <- get
+  
+  let dealer_scoring = if hidden then show (cards_value $ drop 1 $ view dealer table) ++ " < " else (show $ cards_value $ view dealer table) ++ " = "
+  
+  lift . putStrLn $ (take 40 $ repeat '=') ++ " (" ++ label ++ ")"
+  lift . putStrLn $ "PLAYER: " ++ (show $ cards_value $ view player table) ++ " = " ++ hand_show False (view player table)
+  lift . putStrLn $ "DEALER: " ++ dealer_scoring ++ hand_show hidden (view dealer table)
 
 -----------------------------------------------------------------------------------------------------------------------------
 -- blackjack updates
@@ -153,19 +156,20 @@ type BJStateIO a = StateT Table IO       a
 
 -- lift from Identity to IO
 
-liftStateIO :: Monad m => StateT s Identity a -> StateT s m a
-liftStateIO st = StateT $ \s -> return (runIdentity $ runStateT st s) 
+liftID_IO :: Monad m => StateT s Identity a -> StateT s m a
+liftID_IO st = StateT $ \s -> return (runIdentity $ runStateT st s) 
 
 -- play
 
 data Move = Stand | Hit
 
-play_deal :: BJState ()
+play_deal :: BJStateIO ()
 play_deal = do
-  deal_to_dealer
-  deal_to_player
-  deal_to_dealer
-  deal_to_player
+  liftID_IO deal_to_dealer
+  liftID_IO deal_to_player
+  liftID_IO deal_to_dealer
+  liftID_IO deal_to_player
+  display_table True "deal"
 
 -- card manipulation
 
@@ -189,13 +193,24 @@ deal_to_player = do
 
 -- dealer play
 
-play_dealer :: BJState ()
+play_dealer :: BJStateIO ()
 play_dealer = do
   table <- get
-  move <- get_dealer_move
-  case move of
-    Stand -> return ()
-    Hit   -> deal_to_dealer
+  case cards_value (view dealer table) `compare` 21 of
+    GT -> lift . putStrLn $ "> busted :("
+    EQ -> lift . putStrLn $ "> nice 21!"
+    LT -> do
+      lift . putStrLn $ take 20 (repeat '=')
+      move <- liftID_IO get_dealer_move
+      case move of
+        Stand -> do
+          lift . putStrLn $ "dealer: stand"
+          display_table False "dealer"
+        Hit -> do
+          lift . putStrLn $ "dealer: hit"
+          liftID_IO deal_to_dealer
+          display_table False "dealer"
+          play_dealer
 
 get_dealer_move :: BJState Move
 get_dealer_move = do
@@ -208,20 +223,23 @@ get_dealer_move = do
 
 play_player :: BJStateIO ()
 play_player = do
-  move <- lift get_player_move
-  case move of
-    Stand -> return ()
-    Hit   -> do
-      table <- gets $ id
-      liftStateIO deal_to_player
-      lift $ display_table False table
-      player <- gets $ view player
-      if cards_value player > 21
-        then lift (putStrLn "busted :(") >> return ()
-        else play_player
+  table <- get
+  case cards_value (view player table) `compare` 21 of
+    GT -> lift . putStrLn $ "> busted :("
+    EQ -> lift . putStrLn $ "> nice 21!"
+    LT -> do
+      move <- lift get_player_move
+      case move of
+        Stand -> display_table False "player"
+        Hit   -> do
+          liftID_IO deal_to_player
+          display_table True "player"
+          play_player
 
 get_player_move :: IO Move
 get_player_move = do
+  putStrLn $ take 20 (repeat '=')
+  putStr "player: "
   input <- getLine
   if length input == 0 then putStrLn "please enter a move; moves are (h)it or (s)tand" >> get_player_move else
     if toLower (head input) == 'h' then return Hit else
@@ -232,26 +250,24 @@ get_player_move = do
 
 display_winner :: BJStateIO ()
 display_winner = do
-  player <- gets $ view player
-  dealer <- gets $ view dealer
-  let (p, d) = (cards_value player, cards_value dealer)
+  lift . putStrLn $ take 20 (repeat '=')
+  table <- get
+  let (p, d) = (cards_value $ view player table, cards_value $ view dealer table)
   if p <= 21 && (d > 21 || d < p)
-    then lift $ putStrLn "You win!"
-    else lift $ putStrLn "You lose..."
+    then lift $ putStrLn "> you win!"
+    else lift $ putStrLn "> you lose..."
 
 -----------------------------------------------------------------------------------------------------------------------------
 -- main
 -----------------------------------------------------------------------------------------------------------------------------
 
 main :: IO ()
-main = do
-  runStateT play table_init
-  return ()
+main = fmap fst $ runStateT play table_init
 
 play :: BJStateIO ()
 play = do
-
-  lift $ putStrLn $ take 70 $ repeat '='
+  lift . putStrLn $ take 70 (repeat '=')
+  lift . putStrLn $ "staring round..."
 
   -- shuffle deck
   put table_init
@@ -259,29 +275,24 @@ play = do
   modify $ set deck cards
 
   -- deal first two cards to each of player and dealer
-  liftStateIO $ play_deal
-  liftStateIO . pure $ display_table True
-
-  -- player plays out hand
+  play_deal
   play_player
-  liftStateIO . pure $ display_table True
-
-  -- dealer plays out hand
-  liftStateIO play_dealer
-  liftStateIO . pure $ display_table False
+  play_dealer
 
   -- display winner
   display_winner
 
   -- repeat or end
   again <- lift get_playagain
-  if again then play else return ()
+  if again
+    then play
+    else lift $ putStrLn "quitting blackjack..."
 
 -- play again?
 
 get_playagain :: IO Bool
 get_playagain = do
-  putStr "Play again?\n> "
+  putStr "Play again? "
   input <- getLine
   if (toLower . head) input == 'y' then return True
     else if (toLower . head) input == 'n' then return False
