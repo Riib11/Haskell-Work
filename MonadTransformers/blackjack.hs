@@ -61,6 +61,8 @@ data BJState = BJState
   , _dealer :: Hand
   , _deck   :: Deck }
 
+
+
 $(makeLenses ''BJState)
 
 init_state = BJState [] [] []

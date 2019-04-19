@@ -227,6 +227,8 @@ instance Monad MIOUpdate where
                                                    let (MIOUpdate iou') = x_iou x
                                                    iou' s'
 
+
+
 getWith :: (State -> a) -> MIOUpdate a
 getWith extractor = MIOUpdate $ \s -> return (extractor s,s)                                               
 
