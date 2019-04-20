@@ -5,13 +5,18 @@ import Data.Char hiding (isSpace)
 
 {- Language 1 ---------------------------------------------------------------------------------------------------------------
 
+This language implements simple algebra with the only explicit naturals
+available as those less than 10 (because only one digit is read per number).
+Addition, subtraction, multiplication and integer division are supported,
+with proper implicit associativity and optional explicit associativity.
+
     expr ::= expr addop term | term
     term ::= term mulop factor | factor
   factor ::= digit | (expr)
 
   digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
   addop ::= + | -
-  mulip ::= * | /
+  mulop ::= * | /
 
 ----------------------------------------------------------------------------------------------------------------------------}
 

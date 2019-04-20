@@ -3,17 +3,21 @@ module SimpleLang02 (main) where
 import Parser
 import Data.Char (isDigit)
 
-{- Language 1 ---------------------------------------------------------------------------------------------------------------
+{- Language 2 ---------------------------------------------------------------------------------------------------------------
+
+This language implements simple integer algebra.
+Addition, subtraction, multiplication and integer division are supported,
+with proper implicit associativity and optional explicit associativity.
 
     expr ::= term   | expr addop term
     term ::= factor | term mulop factor
-  factor ::= nat | (expr)
+  factor ::= nat    | (expr)
   
-  int   ::= -?nat
+  int   ::= [+|-]?nat
   nat   ::= digit+
   digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
   addop ::= + | -
-  mulip ::= * | /
+  mulop ::= * | /
 
 ----------------------------------------------------------------------------------------------------------------------------}
 
