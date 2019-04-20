@@ -1,31 +1,92 @@
 {-# LANGUAGE UndecidableInstances #-}
 
+module Parser where
+
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class
+import Data.Char hiding (isSpace)
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- Parser
+-----------------------------------------------------------------------------------------------------------------------------
 
 type Parser a = StateT String [] a
 
-run_parser :: Parser a -> String -> [(a, String)]
-run_parser = runStateT
+runParser :: Parser a -> String -> [(a, String)]
+runParser = runStateT
+
+-- Monoid (StateT s m a)
 
 instance (Monad m, Monoid (m (a, s))) => Monoid (StateT s m a) where
-  mempty = StateT mempty
-  mappend st st' = StateT $ \s -> let mxs = runStateT st s ; mxs' = runStateT st' s in mappend mxs mxs'
+  mempty         = StateT mempty
+  mappend st st' = StateT $ \s -> let mas = runStateT st s ; ma's = runStateT st' s in mappend mas ma's
 
-parse_char_predicate :: (Char -> Bool) -> Parser Char
-parse_char_predicate p = do
+(+++) :: Parser a -> Parser a -> Parser a
+(+++) = mappend
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- Choice Combinators
+-----------------------------------------------------------------------------------------------------------------------------
+
+char_predicate :: (Char -> Bool) -> Parser Char
+char_predicate p = do
   c:cs <- get
   if p c
     then put cs >> return c
     else lift []
 
-parse_char :: Char -> Parser Char
-parse_char c = parse_char_predicate (== c)
+char :: Char -> Parser Char
+char c = char_predicate (== c)
 
-parse_string :: String -> Parser String
-parse_string s = case s of
+-----------------------------------------------------------------------------------------------------------------------------
+-- Recursive Combinators
+-----------------------------------------------------------------------------------------------------------------------------
+
+string :: String -> Parser String
+string s = case s of
   ""   -> return ""
-  c:cs -> parse_char c >> parse_string cs
+  c:cs -> char c >> string cs
 
--- many :: Parser a -> Parser [a]
--- many p = many1 ++ 
+many :: Parser a -> Parser [a]
+many p = many1 p +++ return mempty
+
+many1 :: Parser a -> Parser [a]
+many1 p = do
+  a  <- p
+  as <- many p
+  return (a:as)
+
+seperated_by :: Parser a -> Parser b -> Parser [a]
+p `seperated_by` sep = (p `seperated_by1` sep) +++ return mempty
+
+seperated_by1 :: Parser a -> Parser b -> Parser [a]
+p `seperated_by1` sep = do { a <- p ; as <- many (sep >> p) ; return (a:as) }
+
+chain_left :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chain_left p op a = (p `chain_left1` op) +++ return a
+
+chain_left1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+p `chain_left1` op = do { a <- p ; rest a } where
+  rest a = do { f <- op ; b <- p ; rest (f a b) } +++ return a
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- Lexical Combinators
+-----------------------------------------------------------------------------------------------------------------------------
+
+isSpace :: Char -> Bool
+isSpace c = case c of
+  ' '  -> True
+  '\n' -> True
+  _    -> False
+
+space :: Parser String
+space = many $ char_predicate isSpace
+
+token :: Parser a -> Parser a
+token p = do { a <- p ; space ; return a }
+
+symbol :: String -> Parser String
+symbol str = token (string str)
+
+apply :: Parser a -> String -> [(a, String)]
+apply p = runParser $ space >> p
