@@ -25,7 +25,7 @@ instance (Monad m, Monoid (m (a, s))) => Monoid (StateT s m a) where
 (+++) = mappend
 
 -----------------------------------------------------------------------------------------------------------------------------
--- Choice Combinators
+-- First Order Combinators
 -----------------------------------------------------------------------------------------------------------------------------
 
 char_predicate :: (Char -> Bool) -> Parser Char
@@ -38,26 +38,29 @@ char_predicate p = do
 char :: Char -> Parser Char
 char c = char_predicate (== c)
 
------------------------------------------------------------------------------------------------------------------------------
--- Recursive Combinators
------------------------------------------------------------------------------------------------------------------------------
-
 string :: String -> Parser String
 string s = case s of
   ""   -> return ""
   c:cs -> char c >> string cs
 
+-----------------------------------------------------------------------------------------------------------------------------
+-- Second Order Combinators
+-----------------------------------------------------------------------------------------------------------------------------
+
+option :: Parser a -> Parser b -> Parser b -> Parser b
+option opt p p' = do { opt ; p } +++ p'
+
+options :: [(Parser a, Parser b)] -> Parser b -> Parser b
+options optps p' = foldl (+++) p' $ map (\(opt, p) -> opt >> p) optps
+
 many :: Parser a -> Parser [a]
-many p = many1 p +++ return mempty
+many p = many1 p +++ return []
 
 many1 :: Parser a -> Parser [a]
-many1 p = do
-  a  <- p
-  as <- many p
-  return (a:as)
+many1 p = do { a <- p ; as <- many p ; return (a:as) }
 
 seperated_by :: Parser a -> Parser b -> Parser [a]
-p `seperated_by` sep = (p `seperated_by1` sep) +++ return mempty
+p `seperated_by` sep = (p `seperated_by1` sep) +++ return []
 
 seperated_by1 :: Parser a -> Parser b -> Parser [a]
 p `seperated_by1` sep = do { a <- p ; as <- many (sep >> p) ; return (a:as) }
@@ -87,6 +90,3 @@ token p = do { a <- p ; space ; return a }
 
 symbol :: String -> Parser String
 symbol str = token (string str)
-
-apply :: Parser a -> String -> [(a, String)]
-apply p = runParser $ space >> p

@@ -1,14 +1,16 @@
-module SimpleLang01 (main) where
+module SimpleLang02 (main) where
 
 import Parser
-import Data.Char hiding (isSpace)
+import Data.Char (isDigit)
 
 {- Language 1 ---------------------------------------------------------------------------------------------------------------
 
-    expr ::= expr addop term | term
-    term ::= term mulop factor | factor
-  factor ::= digit | (expr)
-
+    expr ::= term   | expr addop term
+    term ::= factor | term mulop factor
+  factor ::= nat | (expr)
+  
+  int   ::= -?nat
+  nat   ::= digit+
   digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
   addop ::= + | -
   mulip ::= * | /
@@ -22,10 +24,16 @@ term :: Parser Int
 term = factor `chain_left1` mulop
 
 factor :: Parser Int
-factor = digit +++ do { symbol "(" ; n <- expr ; symbol ")" ; return n }
+factor = int +++ do { symbol "(" ; n <- expr ; symbol ")" ; return n }
+
+int :: Parser Int
+int = options [ (symbol "+", nat), (symbol "-", do { n <- nat ; return (-n) }) ] nat
+
+nat :: Parser Int
+nat = many1 digit >>= return . foldl (\n d -> n * 10 + d) 0
 
 digit :: Parser Int
-digit = do { x <- token (char_predicate isDigit) ; return (ord x - ord '0') }
+digit = do { x <- token (char_predicate isDigit) ; return (read [x]) }
 
 addop :: Parser (Int -> Int -> Int)
 addop = do { symbol "+" ; return (+) } +++ do { symbol "-" ; return (-) }
@@ -40,8 +48,6 @@ mulop = do { symbol "*" ; return (*) } +++ do { symbol "/" ; return (div) }
 main :: IO ()
 main = do
   input <- getLine
-  let (output, rest) = head $ runParser expr input
-  putStrLn $ "=> " ++ show output
-  if rest /= ""
-    then putStrLn $ "(unparsed: " ++ show rest ++ ")"
-    else return ()
+  let parsed = runParser expr input
+  let (output, rest) = head $ parsed
+  putStrLn $ "=> " ++ show parsed
