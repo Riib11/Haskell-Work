@@ -2,16 +2,17 @@ module Lambda1 where
 
 import Parser
 
-{- Language 1 ---------------------------------------------------------------------------------------------------------------
+{- Lambda1 ---------------------------------------------------------------------------------------------------------------
 
-This language implements simple algebra with the only explicit naturals
-available as those less than 10 (because only one digit is read per number).
-Addition, subtraction, multiplication and integer division are supported,
-with proper implicit associativity and optional explicit associativity.
+This language implements a simple, untyped lambda calculus.
+The only term atoms avaliable are A, B, and C.
+Structures are right-associative by default, and allows explicit association.
+Note that spaces are required between every token! (including parentheses)
 
 program ::= expr*
 
-expr ::= let name := expr in expr # substitution
+expr ::= (expr)
+       | let name := expr in expr # substitution
        | function name => expr # function
        | apply expr expr # application
        | name # atom
@@ -41,7 +42,11 @@ instance Show Expression where
   show (Atom n)             = show n
 
 expression :: Parser Expression
-expression = substitution +++ function +++ application +++ atom
+expression = substitution
+         +++ function
+         +++ application
+         +++ atom
+         +++ do { symbol "(" ; x <- expression ; symbol ")" ; return x }
 
 expression_left :: Parser Expression
 expression_left = substitution +++ function +++ atom
@@ -55,7 +60,7 @@ function = do { symbol "function" ; n <- name ; symbol "=>" ; x <- expression
   ; return $ Function n x }
 
 application :: Parser Expression
-application = do { x <- expression_left ; symbol "$" ; y <- expression
+application = do { x <- expression_left ; y <- expression
   ; return $ Application x y }
 
 atom :: Parser Expression
@@ -70,6 +75,6 @@ data Name = A | B | C
 
 name :: Parser Name
 name =
-  do { symbol "a" ; return A } +++
-  do { symbol "b" ; return B } +++
-  do { symbol "c" ; return C }
+  do { symbol "A" ; return A } +++
+  do { symbol "B" ; return B } +++
+  do { symbol "C" ; return C }
