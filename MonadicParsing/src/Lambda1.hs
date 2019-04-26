@@ -42,30 +42,40 @@ instance Show Expression where
   show (Atom n)             = show n
 
 expression :: Parser Expression
-expression = substitution
-         +++ function
-         +++ application
-         +++ atom
-         +++ do { symbol "(" ; x <- expression ; symbol ")" ; return x }
+expression = expression_left
+        +++ expression_right
+        +++ expression_associated
+
+expression_right :: Parser Expression
+expression_right = substitution
+               +++ function
+               +++ application
+               +++ atom
 
 expression_left :: Parser Expression
-expression_left = substitution +++ function +++ atom
+expression_left = substitution
+              +++ function
+              +++ atom
+
+expression_associated :: Parser Expression
+expression_associated = do { symbol "(" ; x <- expression_right ; symbol ")"
+                           ; return x }
 
 substitution :: Parser Expression
 substitution = do { symbol "let" ; n <- name ; symbol ":=" ; x <- expression ; symbol "in" ; y <- expression
-  ; return $ Substitution n x y }
+                  ; return $ Substitution n x y }
 
 function :: Parser Expression
 function = do { symbol "function" ; n <- name ; symbol "=>" ; x <- expression
-  ; return $ Function n x }
+              ; return $ Function n x }
 
 application :: Parser Expression
 application = do { x <- expression_left ; y <- expression
-  ; return $ Application x y }
+                 ; return $ Application x y }
 
 atom :: Parser Expression
-atom = do { n <- name ;
-  return $ Atom n }
+atom = do { n <- name
+          ; return $ Atom n }
 
 -----------------------------------------------------------------------------
 -- Name
@@ -74,7 +84,6 @@ data Name = A | B | C
   deriving (Show)
 
 name :: Parser Name
-name =
-  do { symbol "A" ; return A } +++
-  do { symbol "B" ; return B } +++
-  do { symbol "C" ; return C }
+name = do { symbol "A" ; return A }
+   +++ do { symbol "B" ; return B }
+   +++ do { symbol "C" ; return C }

@@ -1,6 +1,3 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Parser where
 
 import Control.Monad.Trans.State
