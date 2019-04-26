@@ -1,10 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Parser_new where
+module Parser where
 
--- import Data.Semigroup
--- import qualified Data.List.NonEmpty
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class
 import Data.Char
