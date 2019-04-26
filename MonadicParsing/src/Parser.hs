@@ -33,7 +33,7 @@ instance (Monad m, Monoid (m a), Monoid (m (a, s))) => Monoid (StateT s m a) whe
 -----------------------------------------------------------------------------------------------------------------------------
 
 char_predicate :: (Char -> Bool) -> Parser Char
-char_predicate p = do { c:cs <- get ; if p c then put cs >> return c ; else lift [] }
+char_predicate p = do { c:cs <- get ; if p c then put cs >> return c ; else mempty }
 
 char :: Char -> Parser Char
 char c = char_predicate (== c)
@@ -75,7 +75,7 @@ check p = p >> return ()
 -----------------------------------------------------------------------------------------------------------------------------
 
 end :: Parser ()
-end = do { s <- get ; case s of { "" -> return () ; _ -> lift [] } }
+end = do { s <- get ; case s of { "" -> return () ; _ -> mempty } }
 
 space :: Parser ()
 space = check (many1 $ char_predicate isSpace) +++ end
