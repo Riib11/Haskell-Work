@@ -72,4 +72,4 @@ token :: Parser a -> Parser a
 token p = do { a <- p ; space ; return a }
 
 symbol :: String -> Parser String
-symbol str = token (string str)
+symbol = token . string
