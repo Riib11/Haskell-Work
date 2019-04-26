@@ -1,6 +1,22 @@
-module Main where
+import System.IO
+import Parser
+import SimpleLang02 (program)
 
-import Lib
+-- input = "1 + 1 * 100 - 5"
 
 main :: IO ()
-main = someFunc
+main = do
+  input <- getLine
+
+  putStrLn $ take 40 $ repeat '='
+
+  let parsed = runParser program input
+  let (output, rest) = head $ parsed
+
+  putStr     input
+  putStr     " => "
+  putStrLn $ show parsed
+
+  putStrLn $ take 40 $ repeat '='
+
+  main

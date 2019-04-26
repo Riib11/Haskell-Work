@@ -1,12 +1,10 @@
+module Spec_a where
+
 import System.IO
 import Parser
-import TreeLang
+import SimpleLang02 (program)
 
-input = "function a => apply a of b"
--- input = "apply a of b"
--- input = "let a := b in a"
--- input = "a"
-
+input = "1 + 1 * 100 - 5"
 
 main :: IO ()
 main = do
