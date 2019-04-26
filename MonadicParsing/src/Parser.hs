@@ -1,4 +1,10 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Parser where
+
+import qualified Data.Semigroup as Semigroup
+import qualified Data.List.NonEmpty as NonEmpty (toList, take, repeat)
 
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class
@@ -14,7 +20,13 @@ runParser :: Parser a -> String -> [(a, String)]
 runParser = runStateT
 
 (+++) :: Parser a -> Parser a -> Parser a
-p +++ p' = StateT $ \s -> let (as, as') = (runStateT p s, runStateT p' s) in as ++ as'
+(+++) = mappend
+
+instance (Monad m, Monoid (m a), Monoid (m (a, s))) => Semigroup (StateT s m a) where
+  st <> st' = StateT $ \s -> let (as, as') = (runStateT st s, runStateT st' s) in as `mappend` as'
+
+instance (Monad m, Monoid (m a), Monoid (m (a, s))) => Monoid (StateT s m a) where
+  mempty = lift mempty
 
 -----------------------------------------------------------------------------------------------------------------------------
 -- First Order Combinators
