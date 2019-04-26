@@ -42,24 +42,22 @@ instance Show Expression where
   show (Atom n)             = show n
 
 expression :: Parser Expression
-expression = expression_left
-        +++ expression_right
-        +++ expression_associated
+expression = substitution
+         +++ function
+         +++ application
+         +++ atom
+         +++ associated expression
 
-expression_right :: Parser Expression
-expression_right = substitution
-               +++ function
-               +++ application
-               +++ atom
+associated :: Parser a -> Parser a
+associated p = do { symbol "(" ; a <- p ; symbol ")" ; return a }
 
 expression_left :: Parser Expression
 expression_left = substitution
               +++ function
               +++ atom
+              +++ associated expression_left
 
-expression_associated :: Parser Expression
-expression_associated = do { symbol "(" ; x <- expression_right ; symbol ")"
-                           ; return x }
+-------------------------------------
 
 substitution :: Parser Expression
 substitution = do { symbol "let" ; n <- name ; symbol ":=" ; x <- expression ; symbol "in" ; y <- expression
