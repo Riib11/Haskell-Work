@@ -4,7 +4,7 @@
 module Parser where
 
 import qualified Data.Semigroup as Semigroup
-import qualified Data.List.NonEmpty as NonEmpty (toList, take, repeat)
+import qualified Data.List.NonEmpty as NonEmpty
 
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class
